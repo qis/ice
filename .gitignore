@@ -1,0 +1,11 @@
+/*
+.*
+!/include/
+!/res/
+!/src/
+!/.clang-format
+!/.clang-tidy
+!/.gitattributes
+!/.gitignore
+!/CMakeLists.txt
+!/LICENSE

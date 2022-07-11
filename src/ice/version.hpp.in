@@ -1,0 +1,60 @@
+#pragma once
+#include <ice/config.hpp>
+#include <compare>
+#include <format>
+#include <cstdint>
+
+#define ICE_VERSION "@PROJECT_VERSION@"
+#define ICE_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define ICE_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define ICE_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+namespace ice {
+
+class version {
+public:
+  // clang-format off
+  constexpr version(std::uint16_t major = 0, std::uint16_t minor = 0, std::uint32_t patch = 0) noexcept :
+    value_((std::uint64_t{ major } << 48 & 0xFFFF000000000000) |
+           (std::uint64_t{ minor } << 32 & 0x0000FFFF00000000) |
+           (std::uint64_t{ patch }       & 0x00000000FFFFFFFF)) {}
+  // clang-format on
+
+  constexpr std::uint16_t major() const noexcept {
+    return static_cast<std::uint16_t>(value_ >> 48 & 0xFFFF);
+  }
+
+  constexpr std::uint16_t minor() const noexcept {
+    return static_cast<std::uint16_t>(value_ >> 32 & 0xFFFF);
+  }
+
+  constexpr std::uint32_t patch() const noexcept {
+    return static_cast<std::uint32_t>(value_ & 0xFFFFFFFF);
+  }
+
+  constexpr void set(std::uint64_t value) noexcept {
+    value_ = value;
+  }
+
+  constexpr std::uint64_t get() const noexcept {
+    return value_;
+  }
+
+  friend constexpr auto operator<=>(version, version) noexcept = default;
+
+private:
+  std::uint64_t value_;
+};
+
+ICE_API version runtime_version() noexcept;
+
+}  // namespace ice
+
+template <>
+struct std::formatter<ice::version> : std::formatter<std::string_view> {
+  template <class FormatContext>
+  auto format(ice::version v, FormatContext& c) {
+    const auto s = std::format("{}.{}.{}", v.major(), v.minor(), v.patch());
+    return std::formatter<std::string_view>::format(s, c);
+  }
+};
