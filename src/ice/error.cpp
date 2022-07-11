@@ -11,11 +11,23 @@ namespace ice {
 namespace {
 
 using index = std::map<error_type, const std::error_category*>;
+
+#ifdef __cpp_lib_atomic_shared_ptr
+std::atomic<std::shared_ptr<index>> categories;
+#else
 std::shared_ptr<index> categories;
+#endif
+
 std::mutex mutex;
 
-const std::error_category* get(error_type type) noexcept {
-  if (auto ptr = std::atomic_load(&categories)) {
+const std::error_category* get(error_type type) noexcept
+{
+#ifdef __cpp_lib_atomic_shared_ptr
+  if (const auto ptr = categories.load(std::memory_order_relaxed))
+#else
+  if (const auto ptr = std::atomic_load(&categories))
+#endif
+  {
     if (const auto it = ptr->find(type); it != ptr->end()) {
       return it->second;
     }
@@ -23,7 +35,8 @@ const std::error_category* get(error_type type) noexcept {
   return nullptr;
 }
 
-bool parse_value(std::string_view s, std::uint32_t& value) noexcept {
+bool parse_value(std::string_view s, std::uint32_t& value) noexcept
+{
   if (s.size() < 8) {
     return false;
   }
@@ -36,26 +49,31 @@ bool parse_value(std::string_view s, std::uint32_t& value) noexcept {
 }
 
 struct success_info final : std::error_category {
-  const char* name() const noexcept override {
+  const char* name() const noexcept override
+  {
     return "success";
   }
-  std::string message(int code) const override {
+  std::string message(int code) const override
+  {
     return format_error_code(code);
   }
 };
 
-const std::error_category& success_category() noexcept {
+const std::error_category& success_category() noexcept
+{
   static const success_info info;
   return info;
 }
 
 }  // namespace
 
-const char* error_info::name() const noexcept {
+const char* error_info::name() const noexcept
+{
   return "ice";
 }
 
-std::string error_info::message(int code) const {
+std::string error_info::message(int code) const
+{
   switch (const auto e = static_cast<errc>(code)) {
   case errc::result:
     return "result not initialized";
@@ -63,19 +81,22 @@ std::string error_info::message(int code) const {
   return format_error_code(code);
 }
 
-const std::error_category& error_category() noexcept {
+const std::error_category& error_category() noexcept
+{
   static const error_info info;
   return info;
 }
 
-std::string error::name() const {
+std::string error::name() const
+{
   if (const auto category = get(type_)) {
     return category->name();
   }
   return std::format("{:08X}", static_cast<std::uint32_t>(type_));
 }
 
-std::string error::message() const {
+std::string error::message() const
+{
   const auto code = static_cast<int>(code_);
   if (const auto category = get(type_)) {
     return category->message(code);
@@ -83,7 +104,8 @@ std::string error::message() const {
   return format_error_code(code);
 }
 
-std::string format_error(std::string_view pack) {
+std::string format_error(std::string_view pack)
+{
   if (const auto pos = pack.find_first_not_of(" \f\n\r\t\v"); pos != 0) {
     pack = pack.substr(pos);
   }
@@ -122,7 +144,8 @@ std::string format_error(std::string_view pack) {
   return format_error(error{ type, code });
 }
 
-std::string format_error(std::string_view type, std::string_view code) {
+std::string format_error(std::string_view type, std::string_view code)
+{
   if (std::uint32_t type_value = 0; parse_value(type, type_value)) {
     if (std::uint32_t code_value = 0; parse_value(code, code_value)) {
       return format_error(error{ static_cast<error_type>(type_value), static_cast<int>(code_value) });
@@ -132,9 +155,14 @@ std::string format_error(std::string_view type, std::string_view code) {
   return std::string{ type } + ": " + std::string{ code };
 }
 
-bool load(error_type type, const std::error_category& category) {
+bool load(error_type type, const std::error_category& category)
+{
   std::lock_guard lock{ mutex };
+#ifdef __cpp_lib_atomic_shared_ptr
+  auto ptr = categories.load(std::memory_order_acquire);
+#else
   auto ptr = std::atomic_load(&categories);
+#endif
   if (!ptr) {
     ptr = std::make_shared<index>();
     ptr->emplace(error_type::success, &success_category());
@@ -143,7 +171,11 @@ bool load(error_type type, const std::error_category& category) {
   if (!ptr->emplace(type, &category).second) {
     return false;
   }
+#ifdef __cpp_lib_atomic_shared_ptr
+  categories.store(std::move(ptr), std::memory_order_release);
+#else
   std::atomic_store(&categories, std::move(ptr));
+#endif
   return true;
 }
 

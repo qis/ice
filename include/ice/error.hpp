@@ -8,10 +8,12 @@
 //   };
 //
 //   struct error_info final : std::error_category {
-//     const char* name() const noexcept override {
+//     const char* name() const noexcept override
+//     {
 //       return "core";
 //     }
-//     std::string message(int code) const override {
+//     std::string message(int code) const override
+//     {
 //       switch (static_cast<errc>(code)) {
 //       case errc::failure: return "failure";
 //       case errc::unknown: return "unknown";
@@ -20,18 +22,21 @@
 //     }
 //   };
 //
-//   inline const error_info& error_category() noexcept {
+//   inline const error_info& error_category() noexcept
+//   {
 //     static const error_info info;
 //     return info;
 //   }
 //
-//   inline std::error_code make_error_code(errc errc) noexcept {
+//   inline std::error_code make_error_code(errc errc) noexcept
+//   {
 //     return { static_cast<int>(errc), error_category() };
 //   }
 //
 //   }  // namespace one
 //
-//   int main() {
+//   int main()
+//   {
 //     const auto e = ice::make_system_error(errno);
 //
 //     const std::string pack = ice::format_error(e);              // FFFFFFFE: 00000000 (0)
@@ -68,13 +73,15 @@
 namespace ice {
 
 template <class T, class V = std::remove_cvref_t<T>>
-concept ErrorEnumType = requires(T) {
+concept ErrorEnumType = requires(T)
+{
   requires(std::is_integral_v<V> && !std::is_same_v<V, bool>);
   requires(sizeof(V) <= sizeof(std::int32_t));
 };
 
 template <class T, class E = std::remove_cvref_t<T>>
-concept ErrorEnum = requires(T) {
+concept ErrorEnum = requires(T)
+{
   requires(std::is_enum_v<E> && !std::is_convertible_v<E, std::underlying_type_t<E>>);
   requires(ErrorEnumType<std::underlying_type_t<E>>);
 };
@@ -83,23 +90,26 @@ enum class error_type : std::uint32_t { success = 0, system = 0xFFFFFFFE };
 
 namespace detail {
 
-constexpr error_type make_error_type(const char* s) noexcept {
+constexpr error_type make_error_type(const char* name) noexcept
+{
   std::uint32_t hash = 0x811C9DC5;
-  while (*s) {
-    hash = (static_cast<std::uint32_t>(*s++) ^ hash) * 0x01000193;
+  while (*name) {
+    hash = (static_cast<std::uint32_t>(*name++) ^ hash) * 0x01000193;
   }
   return static_cast<error_type>(hash);
 }
 
 template <ErrorEnum T>
-constexpr error_type make_error_type() noexcept {
+constexpr error_type make_error_type() noexcept
+{
   return make_error_type(ICE_FUNCTION);
 }
 
 }  // namespace detail
 
 template <ErrorEnum E>
-constexpr error_type make_error_type() noexcept {
+constexpr error_type make_error_type() noexcept
+{
   constexpr auto type = detail::make_error_type<std::remove_cvref_t<E>>();
   static_assert(type != error_type::success, "reserved error type");
   static_assert(type != error_type::system, "reserved error type");
@@ -112,7 +122,9 @@ public:
 
   template <ErrorEnum E>
   constexpr error(E errc) noexcept :
-    type_(make_error_type<E>()), code_(static_cast<std::uint32_t>(errc)) {}
+    type_(make_error_type<E>()),
+    code_(static_cast<std::uint32_t>(errc))
+  {}
 
   constexpr error(error&& other) noexcept = default;
   constexpr error(const error& other) noexcept = default;
@@ -121,15 +133,18 @@ public:
 
   constexpr ~error() = default;
 
-  explicit constexpr operator bool() const noexcept {
+  explicit constexpr operator bool() const noexcept
+  {
     return type_ != error_type::success;
   }
 
-  constexpr error_type type() const noexcept {
+  constexpr error_type type() const noexcept
+  {
     return type_;
   }
 
-  constexpr int code() const noexcept {
+  constexpr int code() const noexcept
+  {
     return code_;
   }
 
@@ -148,40 +163,49 @@ public:
 private:
   template <ErrorEnumType V>
   constexpr error(error_type type, V code) noexcept :
-    type_(type), code_(static_cast<std::int32_t>(code)) {}
+    type_(type),
+    code_(static_cast<std::int32_t>(code))
+  {}
 
   error_type type_{ error_type::success };
   std::int32_t code_{ 0 };
 };
 
 template <ErrorEnum E>
-constexpr error make_error(E errc) noexcept {
+constexpr error make_error(E errc) noexcept
+{
   return { errc };
 }
 
 template <ErrorEnum E, ErrorEnumType V>
-constexpr error make_error(V code) noexcept {
+constexpr error make_error(V code) noexcept
+{
   return { static_cast<E>(code) };
 }
 
 template <error_type T, ErrorEnumType V>
-constexpr error make_error(V code) noexcept {
+constexpr error make_error(V code) noexcept
+{
   return { T, static_cast<int>(code) };
 }
 
-constexpr error make_system_error(int code) noexcept {
+constexpr error make_system_error(int code) noexcept
+{
   return make_error<error_type::system>(code);
 }
 
-inline std::string format_error_type(error_type type) {
+inline std::string format_error_type(error_type type)
+{
   return error{ type, 0 }.name();
 }
 
-inline std::string format_error_code(int code) {
+inline std::string format_error_code(int code)
+{
   return std::format("{:08X} ({})", static_cast<std::uint32_t>(code), code);
 }
 
-inline std::string format_error(ice::error e) {
+inline std::string format_error(ice::error e)
+{
   return std::string{ e.name() } + ": " + e.message();
 }
 
@@ -191,12 +215,14 @@ ICE_API std::string format_error(std::string_view type, std::string_view code);
 ICE_API bool load(error_type type, const std::error_category& category);
 
 template <ErrorEnum E>
-inline bool load(const std::error_category& category) {
+inline bool load(const std::error_category& category)
+{
   return load(make_error_type<E>(), category);
 }
 
 template <ErrorEnum E>
-inline bool load() {
+inline bool load()
+{
   return load(make_error_type<E>(), make_error_code(E{}).category());
 }
 
@@ -204,14 +230,15 @@ enum class errc {
   result = 1,
 };
 
-struct error_info final : std::error_category {
+struct error_info : std::error_category {
   ICE_API const char* name() const noexcept override;
   ICE_API std::string message(int code) const override;
 };
 
 ICE_API const std::error_category& error_category() noexcept;
 
-inline std::error_code make_error_code(errc errc) noexcept {
+inline std::error_code make_error_code(errc errc) noexcept
+{
   return { static_cast<int>(errc), error_category() };
 }
 
@@ -220,15 +247,17 @@ inline std::error_code make_error_code(errc errc) noexcept {
 template <>
 struct std::formatter<ice::error_type> : std::formatter<std::string_view> {
   template <class FormatContext>
-  auto format(ice::error_type t, FormatContext& c) {
-    return std::formatter<std::string_view>::format(ice::format_error_type(t), c);
+  auto format(ice::error_type type, FormatContext& context)
+  {
+    return std::formatter<std::string_view>::format(ice::format_error_type(type), context);
   }
 };
 
 template <>
 struct std::formatter<ice::error> : std::formatter<std::string_view> {
   template <class FormatContext>
-  auto format(ice::error e, FormatContext& c) {
-    return std::formatter<std::string_view>::format(ice::format_error(e), c);
+  auto format(ice::error error, FormatContext& context)
+  {
+    return std::formatter<std::string_view>::format(ice::format_error(error), context);
   }
 };

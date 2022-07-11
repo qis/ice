@@ -10,7 +10,8 @@ template <class T>
 constexpr bool is_result_v = is_result<T>::value;
 
 template <class T, class V = std::remove_cvref_t<T>>
-concept ResultType = requires() {
+concept ResultType = requires()
+{
   // clang-format off
   requires(
     std::is_void_v<V> || (
@@ -28,8 +29,6 @@ class result final {
 public:
   constexpr result() noexcept {}
 
-  // clang-format off
-
   constexpr result(ice::error error) noexcept :
     error_(error ? error : ice::errc::result)
   {}
@@ -38,9 +37,19 @@ public:
   constexpr result(Arg&& arg, Args&&... args)
     noexcept(std::is_nothrow_constructible_v<T, Arg, Args...>)
     requires(std::is_constructible_v<T, Arg, Args...> &&
-             !std::is_same_v<std::remove_cvref_t<Arg>, ice::error>) :
+             !std::is_constructible_v<ice::error, Arg, Args...>) :
     error_(), value_(std::forward<Arg>(arg), std::forward<Args>(args)...)
   {}
+
+  // clang-format off
+
+  //template <class Arg, class... Args>
+  //constexpr result(Arg&& arg, Args&&... args)
+  //  noexcept(std::is_nothrow_constructible_v<T, Arg, Args...>)
+  //  requires(std::is_constructible_v<T, Arg, Args...> &&
+  //           !std::is_constructible_v<ice::error, Arg, Args...>) :
+  //  error_(), value_(std::forward<Arg>(arg), std::forward<Args>(args)...)
+  //{}
 
   constexpr result(result&& other)
     noexcept(std::is_nothrow_move_constructible_v<T>)
@@ -114,31 +123,37 @@ public:
 
   // clang-format on
 
-  constexpr ~result() noexcept(std::is_nothrow_destructible_v<T>) {
+  constexpr ~result() noexcept(std::is_nothrow_destructible_v<T>)
+  {
     if (!error_) {
       value_.~T();
     }
   }
 
-  explicit constexpr operator bool() const noexcept {
+  explicit constexpr operator bool() const noexcept
+  {
     return !error_;
   }
 
-  constexpr ice::error error() const noexcept {
+  constexpr ice::error error() const noexcept
+  {
     return error_;
   }
 
-  constexpr const T& value() const& noexcept {
+  constexpr const T& value() const& noexcept
+  {
     ICE_ASSERT(!error_);
     return value_;
   }
 
-  constexpr T& value() & noexcept {
+  constexpr T& value() & noexcept
+  {
     ICE_ASSERT(!error_);
     return value_;
   }
 
-  constexpr T&& value() && noexcept {
+  constexpr T&& value() && noexcept
+  {
     ICE_ASSERT(!error_);
     return std::move(value_);
   }
@@ -155,35 +170,35 @@ class result<void> {
 public:
   constexpr result() noexcept {}
 
-  // clang-format off
-
   constexpr result(ice::error error) noexcept :
     error_(error ? error : ice::errc::result)
   {}
-
-  // clang-format on
 
   constexpr result(result&& other) noexcept = default;
   constexpr result(const result& other) noexcept = default;
   constexpr result& operator=(result&& other) noexcept = default;
   constexpr result& operator=(const result& other) noexcept = default;
 
-  constexpr result& operator=(ice::error error) noexcept {
+  constexpr result& operator=(ice::error error) noexcept
+  {
     error_ = error ? error : ice::errc::result;
     return *this;
   }
 
   constexpr ~result() = default;
 
-  explicit constexpr operator bool() const noexcept {
+  explicit constexpr operator bool() const noexcept
+  {
     return !error_;
   }
 
-  constexpr ice::error error() const noexcept {
+  constexpr ice::error error() const noexcept
+  {
     return error_;
   }
 
-  constexpr void value() const noexcept {
+  constexpr void value() const noexcept
+  {
     ICE_ASSERT(!error_);
   }
 
@@ -199,21 +214,23 @@ struct is_result<ice::result<T>> : std::true_type {};
 template <class T>
 struct std::formatter<ice::result<T>> : std::formatter<T> {
   template <class FormatContext>
-  auto format(const ice::result<T>& r, FormatContext& c) {
-    if (r) {
-      return std::formatter<T>::format(r.value(), c);
+  auto format(const ice::result<T>& result, FormatContext& context)
+  {
+    if (result) {
+      return std::formatter<T>::format(result.value(), context);
     }
-    return std::format_to(c.out(), "{}", r.error());
+    return std::format_to(context.out(), "{}", result.error());
   }
 };
 
 template <>
 struct std::formatter<ice::result<void>> : std::formatter<std::string_view> {
   template <class FormatContext>
-  auto format(const ice::result<void>& r, FormatContext& c) {
-    if (r) {
-      return std::formatter<std::string_view>::format("void", c);
+  auto format(const ice::result<void>& result, FormatContext& context)
+  {
+    if (result) {
+      return std::formatter<std::string_view>::format("void", context);
     }
-    return std::format_to(c.out(), "{}", r.error());
+    return std::format_to(context.out(), "{}", result.error());
   }
 };

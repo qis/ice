@@ -6,6 +6,7 @@ BasedOnStyle: LLVM
 ConstructorInitializerIndentWidth: 2
 ContinuationIndentWidth: 2
 IndentPPDirectives: AfterHash
+LambdaBodyIndentation: OuterScope
 
 # Alignment
 AlignAfterOpenBracket: DontAlign
@@ -26,6 +27,7 @@ BinPackArguments: false
 BinPackParameters: false
 BraceWrapping:
   AfterControlStatement: MultiLine
+  AfterFunction: true
   BeforeCatch: true
   SplitEmptyFunction: false
   SplitEmptyRecord: false
@@ -35,6 +37,8 @@ BreakConstructorInitializers: AfterColon
 BreakInheritanceList: AfterColon
 KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 2
+PackConstructorInitializers: Never
+RequiresClausePosition: OwnLine
 
 # Spaces
 Cpp11BracedListStyle: false
