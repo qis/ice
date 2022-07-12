@@ -1,5 +1,6 @@
 #pragma once
 #include <ice/error.hpp>
+#include <cassert>
 
 namespace ice {
 
@@ -9,47 +10,33 @@ struct is_result : std::false_type {};
 template <class T>
 constexpr bool is_result_v = is_result<T>::value;
 
-template <class T, class V = std::remove_cvref_t<T>>
-concept ResultType = requires()
-{
-  // clang-format off
-  requires(
-    std::is_void_v<V> || (
-      !std::is_const_v<V> &&
-      !std::is_reference_v<V> &&
-      !std::is_same_v<V, ice::error> &&
-      !ice::is_result_v<V>
-    )
-  );
-  // clang-format on
-};
+// clang-format off
+
+template <class T>
+concept ResultType = std::is_void_v<T> || (
+  !std::is_const_v<T> &&
+  !std::is_reference_v<T> &&
+  !std::is_same_v<T, error> &&
+  !is_result_v<T>
+);
+
+// clang-format on
 
 template <ResultType T = void>
 class result final {
 public:
   constexpr result() noexcept {}
 
-  constexpr result(ice::error error) noexcept :
-    error_(error ? error : ice::errc::result)
-  {}
+  constexpr result(error error) noexcept : error_(error ? error : errc::result) {}
+
+  // clang-format off
 
   template <class Arg, class... Args>
   constexpr result(Arg&& arg, Args&&... args)
     noexcept(std::is_nothrow_constructible_v<T, Arg, Args...>)
-    requires(std::is_constructible_v<T, Arg, Args...> &&
-             !std::is_constructible_v<ice::error, Arg, Args...>) :
+    requires(std::is_constructible_v<T, Arg, Args...> && !std::is_constructible_v<error, Arg, Args...>) :
     error_(), value_(std::forward<Arg>(arg), std::forward<Args>(args)...)
   {}
-
-  // clang-format off
-
-  //template <class Arg, class... Args>
-  //constexpr result(Arg&& arg, Args&&... args)
-  //  noexcept(std::is_nothrow_constructible_v<T, Arg, Args...>)
-  //  requires(std::is_constructible_v<T, Arg, Args...> &&
-  //           !std::is_constructible_v<ice::error, Arg, Args...>) :
-  //  error_(), value_(std::forward<Arg>(arg), std::forward<Args>(args)...)
-  //{}
 
   constexpr result(result&& other)
     noexcept(std::is_nothrow_move_constructible_v<T>)
@@ -60,7 +47,7 @@ public:
       new (&value_) T{ std::move(other.value_) };
     }
   }
-  
+
   constexpr result(result&& other)
     requires(!std::is_move_constructible_v<T>) = delete;
 
@@ -73,7 +60,7 @@ public:
       new (&value_) T{ other.value_ };
     }
   }
-  
+
   constexpr result(const result& other)
     requires(!std::is_copy_constructible_v<T>) = delete;
 
@@ -90,7 +77,7 @@ public:
     }
     return *this;
   }
-  
+
   constexpr result& operator=(result&& other)
     requires(!std::is_move_assignable_v<T>) = delete;
 
@@ -107,28 +94,29 @@ public:
     }
     return *this;
   }
-  
+
   constexpr result& operator=(const result& other)
     requires(!std::is_copy_assignable_v<T>) = delete;
 
-  constexpr result& operator=(ice::error error)
+  constexpr result& operator=(error error)
     noexcept(std::is_nothrow_destructible_v<T>)
   {
     if (!error_) {
       value_.~T();
     }
-    error_ = error ? error : ice::errc::result;
+    error_ = error ? error : errc::result;
     return *this;
   }
 
-  // clang-format on
-
-  constexpr ~result() noexcept(std::is_nothrow_destructible_v<T>)
+  constexpr ~result()
+    noexcept(std::is_nothrow_destructible_v<T>)
   {
     if (!error_) {
       value_.~T();
     }
   }
+
+  // clang-format on
 
   explicit constexpr operator bool() const noexcept
   {
@@ -159,7 +147,7 @@ public:
   }
 
 private:
-  ice::error error_{ ice::errc::result };
+  ice::error error_{ errc::result };
   union {
     T value_;
   };
@@ -170,18 +158,16 @@ class result<void> {
 public:
   constexpr result() noexcept {}
 
-  constexpr result(ice::error error) noexcept :
-    error_(error ? error : ice::errc::result)
-  {}
+  constexpr result(error error) noexcept : error_(error ? error : errc::result) {}
 
   constexpr result(result&& other) noexcept = default;
   constexpr result(const result& other) noexcept = default;
   constexpr result& operator=(result&& other) noexcept = default;
   constexpr result& operator=(const result& other) noexcept = default;
 
-  constexpr result& operator=(ice::error error) noexcept
+  constexpr result& operator=(error error) noexcept
   {
-    error_ = error ? error : ice::errc::result;
+    error_ = error ? error : errc::result;
     return *this;
   }
 
@@ -207,7 +193,7 @@ private:
 };
 
 template <class T>
-struct is_result<ice::result<T>> : std::true_type {};
+struct is_result<result<T>> : std::true_type {};
 
 }  // namespace ice
 

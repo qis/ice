@@ -10,7 +10,6 @@
 #endif
 
 #if ICE_DEBUG
-#  include <cassert>
 #  define ICE_ASSERT(expression) assert(expression)
 #else
 #  define ICE_ASSERT(expression)
@@ -92,4 +91,24 @@
 #  define ICE_FUNCTION __FUNCSIG__
 #else
 #  define ICE_FUNCTION __PRETTY_FUNCTION__
+#endif
+
+#include <ciso646>
+
+#if defined(_LIBCPP_BEGIN_NAMESPACE_STD) && defined(_LIBCPP_END_NAMESPACE_STD)
+_LIBCPP_BEGIN_NAMESPACE_STD
+
+template <class, class>
+struct formatter;
+
+_LIBCPP_END_NAMESPACE_STD
+#elif defined(_STD_BEGIN) && defined(_STD_END)
+_STD_BEGIN
+
+template <class, class>
+struct formatter;
+
+_STD_END
+#else
+#  include <format>
 #endif

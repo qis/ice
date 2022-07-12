@@ -1,69 +1,71 @@
-// error.hpp
+// #include <ice/error.hpp>
+// #include <format>
+// #include <cstdio>
 //
-//   namespace one {
+// namespace one {
 //
-//   enum class errc {
-//     failure = 0,
-//     unknown,
-//   };
+// enum class errc {
+//   failure = 0,
+//   unknown,
+// };
 //
-//   struct error_info final : std::error_category {
-//     const char* name() const noexcept override
-//     {
-//       return "core";
+// struct error_info final : std::error_category {
+//   const char* name() const noexcept override
+//   {
+//     return "core";
+//   }
+//   std::string message(int code) const override
+//   {
+//     switch (static_cast<errc>(code)) {
+//     case errc::failure:
+//       return "failure";
+//     case errc::unknown:
+//       return "unknown";
 //     }
-//     std::string message(int code) const override
-//     {
-//       switch (static_cast<errc>(code)) {
-//       case errc::failure: return "failure";
-//       case errc::unknown: return "unknown";
-//       }
-//       return ice::format_error_code(code);
-//     }
-//   };
-//
-//   inline const error_info& error_category() noexcept
-//   {
-//     static const error_info info;
-//     return info;
+//     return ice::format_error_code(code);
 //   }
+// };
 //
-//   inline std::error_code make_error_code(errc errc) noexcept
-//   {
-//     return { static_cast<int>(errc), error_category() };
-//   }
+// inline const error_info& error_category() noexcept
+// {
+//   static const error_info info;
+//   return info;
+// }
 //
-//   }  // namespace one
+// inline std::error_code make_error_code(errc errc) noexcept
+// {
+//   return { static_cast<int>(errc), error_category() };
+// }
 //
-//   int main()
-//   {
-//     const auto e = ice::make_system_error(errno);
+// }  // namespace one
 //
-//     const std::string pack = ice::format_error(e);              // FFFFFFFE: 00000000 (0)
-//     const std::string type = ice::format_error_type(e.type());  // FFFFFFFE
-//     const std::string code = ice::format_error_code(e.code());  // 00000000 (0)
+// int main()
+// {
+//   const auto e = ice::make_system_error(errno);
 //
-//     std::puts(ice::format_error(" " + pack + "\r").data());     // FFFFFFFE: 00000000 (0)
-//     std::puts(ice::format_error(type, code).data());            // FFFFFFFE: 00000000 (0)
+//   const std::string pack = ice::format_error(e);              // FFFFFFFE: 00000000 (0)
+//   const std::string type = ice::format_error_type(e.type());  // FFFFFFFE
+//   const std::string code = ice::format_error_code(e.code());  // 00000000 (0)
 //
-//     ice::load<std::errc>();
+//   std::puts(ice::format_error(" " + pack + "\r").data());     // FFFFFFFE: 00000000 (0)
+//   std::puts(ice::format_error(type, code).data());            // FFFFFFFE: 00000000 (0)
 //
-//     std::puts(ice::format_error("\t" + pack + "\n").data());    // system: Success
-//     std::puts(ice::format_error(type, code).data());            // system: Success
+//   ice::load<std::errc>();
 //
-//     ice::load<ice::errc>();
-//     ice::load<one::errc>();
+//   std::puts(ice::format_error("\t" + pack + "\n").data());    // system: Success
+//   std::puts(ice::format_error(type, code).data());            // system: Success
 //
-//     std::puts(ice::format_error(std::errc::no_link).data());    // generic: Link has been severed
-//     std::puts(ice::format_error(one::errc::failure).data());    // core: failure
-//     std::puts(ice::format_error(ice::errc::result).data());     // ice: result not initialized
-//   }
+//   ice::load<ice::errc>();
+//   ice::load<one::errc>();
 //
+//   std::puts(ice::format_error(std::errc::no_link).data());    // generic: Link has been severed
+//   std::puts(ice::format_error(one::errc::failure).data());    // core: failure
+//   std::puts(ice::format_error(ice::errc::result).data());     // ice: result not initialized
+// }
+
 #pragma once
 #include <ice/config.hpp>
 #include <compare>
-#include <exception>
-#include <format>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -72,19 +74,21 @@
 
 namespace ice {
 
+// clang-format off
+
 template <class T, class V = std::remove_cvref_t<T>>
-concept ErrorEnumType = requires(T)
-{
+concept ErrorEnumType = requires(T) {
   requires(std::is_integral_v<V> && !std::is_same_v<V, bool>);
   requires(sizeof(V) <= sizeof(std::int32_t));
 };
 
 template <class T, class E = std::remove_cvref_t<T>>
-concept ErrorEnum = requires(T)
-{
+concept ErrorEnum = requires(T) {
   requires(std::is_enum_v<E> && !std::is_convertible_v<E, std::underlying_type_t<E>>);
   requires(ErrorEnumType<std::underlying_type_t<E>>);
 };
+
+// clang-format on
 
 enum class error_type : std::uint32_t { success = 0, system = 0xFFFFFFFE };
 
@@ -122,8 +126,7 @@ public:
 
   template <ErrorEnum E>
   constexpr error(E errc) noexcept :
-    type_(make_error_type<E>()),
-    code_(static_cast<std::uint32_t>(errc))
+    type_(make_error_type<E>()), code_(static_cast<std::uint32_t>(errc))
   {}
 
   constexpr error(error&& other) noexcept = default;
@@ -155,16 +158,16 @@ public:
   friend constexpr error make_error(V code) noexcept;
 
   friend std::string format_error_type(error_type type);
-  friend std::string format_error(std::string_view pack);
-  friend std::string format_error(std::string_view type, std::string_view code);
+
+  ICE_API friend std::string format_error(std::string_view pack);
+  ICE_API friend std::string format_error(std::string_view type, std::string_view code);
 
   friend constexpr auto operator<=>(error, error) noexcept = default;
 
 private:
   template <ErrorEnumType V>
   constexpr error(error_type type, V code) noexcept :
-    type_(type),
-    code_(static_cast<std::int32_t>(code))
+    type_(type), code_(static_cast<std::int32_t>(code))
   {}
 
   error_type type_{ error_type::success };
@@ -194,14 +197,11 @@ constexpr error make_system_error(int code) noexcept
   return make_error<error_type::system>(code);
 }
 
+ICE_API std::string format_error_code(int code);
+
 inline std::string format_error_type(error_type type)
 {
   return error{ type, 0 }.name();
-}
-
-inline std::string format_error_code(int code)
-{
-  return std::format("{:08X} ({})", static_cast<std::uint32_t>(code), code);
 }
 
 inline std::string format_error(ice::error e)
@@ -244,20 +244,20 @@ inline std::error_code make_error_code(errc errc) noexcept
 
 }  // namespace ice
 
-template <>
-struct std::formatter<ice::error_type> : std::formatter<std::string_view> {
-  template <class FormatContext>
-  auto format(ice::error_type type, FormatContext& context)
+template <class Char>
+struct std::formatter<ice::error_type, Char> : std::formatter<std::string_view, Char> {
+  template <class Context>
+  auto format(ice::error_type t, Context& context)
   {
-    return std::formatter<std::string_view>::format(ice::format_error_type(type), context);
+    return std::formatter<std::string_view, Char>::format(ice::format_error_type(t), context);
   }
 };
 
-template <>
-struct std::formatter<ice::error> : std::formatter<std::string_view> {
-  template <class FormatContext>
-  auto format(ice::error error, FormatContext& context)
+template <class Char>
+struct std::formatter<ice::error, Char> : std::formatter<std::string_view, Char> {
+  template <class Context>
+  auto format(ice::error e, Context& context)
   {
-    return std::formatter<std::string_view>::format(ice::format_error(error), context);
+    return std::formatter<std::string_view, Char>::format(ice::format_error(e), context);
   }
 };

@@ -1,6 +1,7 @@
 #include "ice/error.hpp"
 #include <atomic>
 #include <charconv>
+#include <format>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -102,6 +103,11 @@ std::string error::message() const
     return category->message(code);
   }
   return format_error_code(code);
+}
+
+std::string format_error_code(int code)
+{
+  return std::format("{:08X} ({})", static_cast<std::uint32_t>(code), code);
 }
 
 std::string format_error(std::string_view pack)

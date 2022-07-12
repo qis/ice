@@ -1,20 +1,24 @@
 cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 project(ICE DESCRIPTION "ICE Framework" VERSION 0.1.0 LANGUAGES CXX)
 
+set(CMAKE_INSTALL_BINDIR bin CACHE STRING "")
+set(CMAKE_INSTALL_LIBDIR lib CACHE STRING "")
+set(CMAKE_INSTALL_INCLUDEDIR include CACHE STRING "")
+
 option(ICE_INSTALL_LIBRARY "Install library" ${PROJECT_IS_TOP_LEVEL})
 option(ICE_INSTALL_HEADERS "Install header files" ${ICE_INSTALL_LIBRARY})
 option(ICE_INSTALL_CONFIGS "Install CMake configuration files" ${ICE_INSTALL_LIBRARY})
 option(ICE_INSTALL_VERSION "Set VERSION and SOVERSION target properties" OFF)
 
-configure_file(src/ice/version.hpp.in
-  ${CMAKE_CURRENT_BINARY_DIR}/src/ice/version.hpp LF)
+configure_file(src/ice/version.cpp.in
+  ${CMAKE_CURRENT_BINARY_DIR}/src/ice/version.cpp LF)
 
 file(GLOB_RECURSE headers include/*.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/src/ice/version.hpp)
 
 set(sources
   src/ice/error.cpp
-  src/ice/version.cpp)
+  ${CMAKE_CURRENT_BINARY_DIR}/src/ice/version.cpp)
 
 if(WIN32 AND BUILD_SHARED_LIBS)
   configure_file(res/ice.rc.in ${CMAKE_CURRENT_BINARY_DIR}/ice.rc CRLF)
@@ -51,12 +55,11 @@ if(ICE_INSTALL_LIBRARY)
       SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
   endif()
 
-  include(GNUInstallDirs)
   install(TARGETS ice EXPORT ice-targets
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  
+
   if(ICE_INSTALL_CONFIGS)
     include(CMakePackageConfigHelpers)
     install(EXPORT ice-targets FILE ice-targets.cmake NAMESPACE ice::
@@ -81,8 +84,6 @@ endif()
 if(ICE_INSTALL_HEADERS)
   install(DIRECTORY include/ice
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/src/ice/version.hpp
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/ice)
 endif()
 
 add_library(ice::ice ALIAS ice)

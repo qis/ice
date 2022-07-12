@@ -1,0 +1,27 @@
+#include "ice/version.hpp"
+#include <format>
+
+#define ICE_VERSION "@PROJECT_VERSION@"
+#define ICE_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define ICE_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define ICE_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+namespace ice {
+
+namespace detail {
+
+std::string_view format_version(version v, char* data, std::size_t size)
+{
+  const auto result = std::format_to_n(data, size, "{}.{}.{}", v.major(), v.minor(), v.patch());
+  *result.out = '\0';
+  return { data, result.out };
+}
+
+}  // namespace detail
+
+version runtime_version() noexcept
+{
+  return { ICE_VERSION_MAJOR, ICE_VERSION_MINOR, ICE_VERSION_PATCH };
+}
+
+}  // namespace ice
